@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 //  ★ ここだけ書き換えてください
 // ═══════════════════════════════════════
-const API = 'https://your-app.onrender.com'; // Render の URL
+const API = 'https://shopping-app-api-ibu8.onrender.com';
 // ═══════════════════════════════════════
 
 const WS = API.replace('https://', 'wss://').replace('http://', 'ws://');

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2d6a4f">
+<title>買い物メモ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="loading-bar" id="loadBar"></div>
+<div class="toast" id="toast"></div>
+
+<div class="app">
+  <div class="header">
+    <div class="app-title">🛒 買い物メモ</div>
+    <div class="header-right">
+      <div class="ws-dot" id="wsDot" title="接続状態"></div>
+      <button class="user-btn" onclick="toggleUser()">
+        <div class="u-dot" id="uDot" style="background:#7d3c98"></div>
+        <span id="uLabel">妻</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- 買い物リスト -->
+    <div class="page active" id="page-list">
+      <div class="add-toggle" onclick="toggleForm()">
+        <span>＋ 商品を追加</span><span id="formIcon">▾</span>
+      </div>
+      <div class="add-form" id="addForm">
+        <div class="field suggest-wrap">
+          <div class="field-label">商品名 *</div>
+          <input type="text" id="fName" placeholder="例：レノア 柔軟剤" oninput="onNameInput()" autocomplete="off">
+          <div class="sg-list" id="sgList"></div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <div class="field-label">ブランド・規格</div>
+            <input type="text" id="fBrand" placeholder="例：本体 540ml">
+          </div>
+          <div class="field">
+            <div class="field-label">購入スーパー</div>
+            <input type="text" id="fStore" placeholder="例：ベイシア">
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">メモ（迷わないための情報）</div>
+          <input type="text" id="fNote" placeholder="例：青いボトル、詰め替えではなく本体">
+        </div>
+        <div class="field">
+          <div class="field-label">購入頻度</div>
+          <div class="freq-row">
+            <button class="freq-btn active" data-freq="once"    onclick="selFreqBtn(this)">随時</button>
+            <button class="freq-btn"        data-freq="weekly"  onclick="selFreqBtn(this)">毎週</button>
+            <button class="freq-btn"        data-freq="monthly" onclick="selFreqBtn(this)">毎月</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addItem()">リストに追加</button>
+      </div>
+      <div id="listWrap"></div>
+      <div id="completeWrap" style="display:none">
+        <button class="btn-complete" onclick="openCompleteModal()">🛍️ 買い物完了（チェック済みを在庫へ）</button>
+      </div>
+    </div>
+
+    <!-- 在庫 -->
+    <div class="page" id="page-inv">
+      <div id="invWrap"></div>
+      <div class="empty-state" id="invEmpty" style="display:none">
+        <div class="empty-icon">📦</div>
+        <p>在庫がありません<br>買い物完了後に自動追加されます</p>
+      </div>
+    </div>
+
+    <!-- 定期 -->
+    <div class="page" id="page-rec">
+      <div class="section-head">毎週</div><div id="recWeekly"></div>
+      <div class="section-head">毎月</div><div id="recMonthly"></div>
+      <div class="empty-state" id="recEmpty" style="display:none">
+        <div class="empty-icon">🔄</div>
+        <p>定期購入の登録がありません<br>商品追加時に「毎週」「毎月」を選んでください</p>
+      </div>
+    </div>
+
+    <!-- 履歴 -->
+    <div class="page" id="page-hist">
+      <div id="histWrap"></div>
+      <div class="empty-state" id="histEmpty" style="display:none">
+        <div class="empty-icon">📋</div><p>購入履歴がありません</p>
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nb-list" onclick="goPage('list',this)">
+      <span class="icon">🛒</span>リスト
+      <div class="nav-badge" id="listBadge" style="display:none">0</div>
+    </button>
+    <button class="nav-btn" id="nb-inv" onclick="goPage('inv',this)">
+      <span class="icon">📦</span>在庫
+    </button>
+    <button class="nav-btn" id="nb-rec" onclick="goPage('rec',this)">
+      <span class="icon">🔄</span>定期
+      <div class="nav-badge" id="recBadge" style="display:none">0</div>
+    </button>
+    <button class="nav-btn" id="nb-hist" onclick="goPage('hist',this)">
+      <span class="icon">📋</span>履歴
+    </button>
+  </nav>
+</div>
+
+<!-- Modals -->
+<div class="overlay" id="ov-zero">
+  <div class="modal">
+    <div class="modal-title">買い物リストに追加しますか？</div>
+    <div class="modal-body" id="ov-zero-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeOv('ov-zero')">キャンセル</button>
+      <button class="btn btn-ok"     onclick="confirmZero()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-del">
+  <div class="modal">
+    <div class="modal-title">削除しますか？</div>
+    <div class="modal-body" id="ov-del-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeOv('ov-del')">キャンセル</button>
+      <button class="btn btn-del"    onclick="confirmDel()">削除する</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ov-complete">
+  <div class="modal">
+    <div class="modal-title">🛍️ 買い物完了</div>
+    <div class="modal-body" id="ov-complete-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeOv('ov-complete')">キャンセル</button>
+      <button class="btn btn-ok"     onclick="confirmComplete()">完了にする</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

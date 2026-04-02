@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="買い物メモ">
+<meta name="theme-color" content="#2d6a4f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<title>買い物メモ</title>
+<link rel="stylesheet" href="style.css">
+<style>
+/* 献立ページ */
+.ai-controls{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.ctrl-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:8px}
+.day-row,.mood-row,.src-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.day-btn,.mood-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:12px;font-weight:500;background:var(--surface2);color:var(--text2);cursor:pointer;font-family:var(--font)}
+.day-btn.active{background:var(--green);color:#fff;border-color:var(--green)}
+.mood-btn.active{background:var(--purple-bg);color:var(--purple);border-color:var(--purple)}
+.src-btn{flex:1;padding:8px;border-radius:var(--rs);border:1px solid var(--border);font-size:12px;font-weight:500;background:var(--surface2);color:var(--text2);cursor:pointer;text-align:center;font-family:var(--font)}
+.src-btn.active{background:var(--green-bg);color:var(--green-dark);border-color:var(--green)}
+.count-row{display:flex;gap:12px;margin-bottom:12px}
+.count-box{flex:1;background:var(--surface2);border-radius:var(--rs);padding:10px;text-align:center}
+.count-label{font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500}
+.count-ctrl{display:flex;align-items:center;justify-content:center;gap:10px}
+.count-btn{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:var(--font);color:var(--text)}
+.count-val{font-size:20px;font-weight:700;min-width:28px;text-align:center;color:var(--text)}
+.btn-ai{width:100%;padding:13px;background:var(--purple);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font)}
+.btn-ai:disabled{opacity:.5;cursor:not-allowed}
+.meal-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
+.meal-hd{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer}
+.meal-hd:active{background:var(--surface2)}
+.meal-day{font-size:11px;color:var(--text2);font-weight:500}
+.meal-name{font-size:15px;font-weight:700;margin-top:2px}
+.meal-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.meal-tag{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.meal-tag-mood{background:var(--surface2);color:var(--text2)}
+.meal-tag-cal{background:var(--green-bg);color:var(--green-dark)}
+.meal-tag-note{background:var(--warn-bg);color:var(--warn)}
+.meal-toggle{font-size:13px;color:var(--text3);transition:transform .2s;flex-shrink:0;margin-left:8px}
+.meal-toggle.open{transform:rotate(180deg)}
+.meal-bd{display:none;padding:0 14px 14px;border-top:1px solid var(--border)}
+.meal-bd.open{display:block}
+.meal-sec{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px}
+.ing-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.ing{font-size:12px;padding:3px 10px;border-radius:20px;font-weight:500}
+.ing-s{background:var(--green-bg);color:var(--green-dark)}
+.ing-b{background:var(--warn-bg);color:var(--warn)}
+.meal-steps ol{padding-left:18px}
+.meal-steps li{font-size:13px;line-height:1.8;margin-bottom:2px;color:var(--text)}
+.ai-loading{text-align:center;padding:2rem;color:var(--text2);font-size:14px}
+.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* 履歴タブ */
+.hist-tabs{display:flex;gap:6px;margin-bottom:12px}
+.hist-tab{flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--rs);background:var(--surface2);color:var(--text2);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;text-align:center}
+.hist-tab.active{background:var(--green);color:#fff;border-color:var(--green)}
+/* pull indicator */
+#pullIndicator{position:fixed;top:0;left:0;right:0;height:3px;background:var(--green);transform:scaleX(0);transform-origin:left;opacity:0;z-index:1000;pointer-events:none;transition:opacity .15s}
+</style>
+</head>
+<body>
+<div id="pullIndicator"></div>
+<div class="loading-bar" id="loadBar"></div>
+<div class="toast" id="toast"></div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="app-title">🛒 買い物メモ</div>
+    <div class="header-right">
+      <div class="ws-dot" id="wsDot" title="接続状態"></div>
+      <button class="user-btn" onclick="reloadApp()" style="padding:5px 10px;font-size:18px;border-radius:50%;width:36px;height:36px;justify-content:center" title="更新">↺</button>
+      <button class="user-btn" onclick="toggleUser()">
+        <div class="u-dot" id="uDot" style="background:#7d3c98"></div>
+        <span id="uLabel">妻</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- 買い物リスト -->
+    <div class="page active" id="page-list">
+      <div id="notifBanner" style="display:none;background:var(--green-bg);border:1px solid var(--green);border-radius:var(--rs);padding:10px 14px;margin-bottom:10px;display:none;justify-content:space-between;align-items:center;font-size:13px;color:var(--green-dark)">
+        <span>通知を受け取りますか？</span>
+        <button onclick="requestNotifPermission()" style="background:var(--green);color:#fff;border:none;border-radius:var(--rs);padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font)">許可する</button>
+      </div>
+      <div class="add-toggle" onclick="toggleForm()">
+        <span>＋ 商品を追加</span><span id="formIcon">▾</span>
+      </div>
+      <div class="add-form" id="addForm">
+        <div class="field suggest-wrap">
+          <div class="field-label">商品名 *</div>
+          <input type="text" id="fName" placeholder="例：レノア 柔軟剤" oninput="onNameInput()" autocomplete="off">
+          <div class="sg-list" id="sgList"></div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <div class="field-label">ブランド・規格</div>
+            <input type="text" id="fBrand" placeholder="例：本体 540ml">
+          </div>
+          <div class="field">
+            <div class="field-label">購入スーパー</div>
+            <input type="text" id="fStore" placeholder="例：ベイシア">
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">メモ</div>
+          <input type="text" id="fNote" placeholder="例：青いボトル、本体のみ">
+        </div>
+        <div class="field">
+          <div class="field-label">購入頻度</div>
+          <div class="freq-row">
+            <button class="freq-btn active" data-freq="once"    onclick="selFreqBtn(this)">随時</button>
+            <button class="freq-btn"        data-freq="weekly"  onclick="selFreqBtn(this)">毎週</button>
+            <button class="freq-btn"        data-freq="monthly" onclick="selFreqBtn(this)">毎月</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addItem()">リストに追加</button>
+      </div>
+      <div id="listWrap"></div>
+      <div id="completeWrap" style="display:none;padding:0 0 8px">
+        <button class="btn-complete" onclick="openCompleteModal()">🛍️ 買い物完了（チェック済みを在庫へ）</button>
+      </div>
+    </div>
+
+    <!-- 在庫 -->
+    <div class="page" id="page-inv">
+      <div class="add-toggle" onclick="toggleInvForm()">
+        <span>＋ 在庫を直接追加</span><span id="invFormIcon">▾</span>
+      </div>
+      <div class="add-form" id="invAddForm">
+        <div class="field suggest-wrap">
+          <div class="field-label">商品名 *</div>
+          <input type="text" id="ifName" placeholder="例：醤油" oninput="onInvNameInput()" autocomplete="off">
+          <div class="sg-list" id="ifSgList"></div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <div class="field-label">ブランド・規格</div>
+            <input type="text" id="ifBrand" placeholder="例：1L">
+          </div>
+          <div class="field">
+            <div class="field-label">購入スーパー</div>
+            <input type="text" id="ifStore" placeholder="例：ベイシア">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addInvDirect()">在庫に追加（満タン）</button>
+      </div>
+      <div id="invWrap"></div>
+      <div class="empty-state" id="invEmpty" style="display:none">
+        <div class="empty-icon">📦</div>
+        <p>在庫がありません<br>上の「在庫を直接追加」か<br>買い物完了後に自動追加されます</p>
+      </div>
+    </div>
+
+    <!-- 定期 -->
+    <div class="page" id="page-rec">
+      <div class="section-head">毎週</div><div id="recWeekly"></div>
+      <div class="section-head">毎月</div><div id="recMonthly"></div>
+      <div class="empty-state" id="recEmpty" style="display:none">
+        <div class="empty-icon">🔄</div>
+        <p>定期購入の登録がありません<br>商品追加時に「毎週」「毎月」を選んでください</p>
+      </div>
+    </div>
+
+    <!-- 献立 -->
+    <div class="page" id="page-meal">
+      <div class="ai-controls">
+        <div class="ctrl-label">👨‍👩‍👧‍👦 人数</div>
+        <div class="count-row">
+          <div class="count-box">
+            <div class="count-label">大人</div>
+            <div class="count-ctrl">
+              <button class="count-btn" onclick="changeCount('adults',-1)">−</button>
+              <span class="count-val" id="adults-val">2</span>
+              <button class="count-btn" onclick="changeCount('adults',1)">＋</button>
+            </div>
+          </div>
+          <div class="count-box">
+            <div class="count-label">子供</div>
+            <div class="count-ctrl">
+              <button class="count-btn" onclick="changeCount('kids',-1)">−</button>
+              <span class="count-val" id="kids-val">0</span>
+              <button class="count-btn" onclick="changeCount('kids',1)">＋</button>
+            </div>
+          </div>
+        </div>
+        <div class="ctrl-label">📅 何日分？</div>
+        <div class="day-row">
+          <button class="day-btn active" data-d="1" onclick="selDay(this)">1日</button>
+          <button class="day-btn" data-d="2" onclick="selDay(this)">2日</button>
+          <button class="day-btn" data-d="3" onclick="selDay(this)">3日</button>
+          <button class="day-btn" data-d="5" onclick="selDay(this)">5日</button>
+          <button class="day-btn" data-d="7" onclick="selDay(this)">7日</button>
+        </div>
+        <div class="ctrl-label">🍴 気分は？（複数OK）</div>
+        <div class="mood-row">
+          <button class="mood-btn" onclick="toggleMood(this)">時短</button>
+          <button class="mood-btn" onclick="toggleMood(this)">がっつり肉</button>
+          <button class="mood-btn" onclick="toggleMood(this)">野菜中心</button>
+          <button class="mood-btn" onclick="toggleMood(this)">ダイエット</button>
+          <button class="mood-btn" onclick="toggleMood(this)">筋トレ向き</button>
+          <button class="mood-btn" onclick="toggleMood(this)">和食</button>
+          <button class="mood-btn" onclick="toggleMood(this)">洋食</button>
+          <button class="mood-btn" onclick="toggleMood(this)">お子様向け</button>
+        </div>
+        <div class="ctrl-label">🥦 在庫の使い方</div>
+        <div class="src-row">
+          <button class="src-btn active" onclick="selSrc('stock',this)">在庫から</button>
+          <button class="src-btn" onclick="selSrc('free',this)">何でもOK</button>
+          <button class="src-btn" onclick="selSrc('both',this)">ミックス</button>
+        </div>
+        <button class="btn-ai" id="btnAI" onclick="generateMeals()">✨ 献立を提案してもらう</button>
+      </div>
+      <div id="mealResults"></div>
+    </div>
+
+    <!-- 履歴 -->
+    <div class="page" id="page-hist">
+      <div class="hist-tabs">
+        <button class="hist-tab active" onclick="switchHistTab('list',this)">履歴</button>
+        <button class="hist-tab" onclick="switchHistTab('filter',this)">フィルター</button>
+        <button class="hist-tab" onclick="switchHistTab('analytics',this)">分析</button>
+      </div>
+      <!-- 履歴リスト -->
+      <div id="hist-list-pane">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn-x" style="font-size:13px;padding:6px 10px;color:var(--danger)" onclick="askDeleteAllHist()">🗑️ 全削除</button>
+        </div>
+        <div id="histWrap"></div>
+        <div class="empty-state" id="histEmpty" style="display:none">
+          <div class="empty-icon">📋</div><p>購入履歴がありません</p>
+        </div>
+      </div>
+      <!-- フィルター -->
+      <div id="hist-filter-pane" style="display:none">
+        <div class="add-form open" style="margin-bottom:10px">
+          <div class="field">
+            <div class="field-label">商品名で絞り込み</div>
+            <input type="text" id="filt-name" placeholder="例：牛乳">
+          </div>
+          <div class="grid2">
+            <div class="field">
+              <div class="field-label">購入者</div>
+              <select id="filt-who">
+                <option value="">全員</option>
+                <option value="妻">妻</option>
+                <option value="夫">夫</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="field-label">スーパー</div>
+              <input type="text" id="filt-store" placeholder="例：ベイシア">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="applyFilter()">絞り込む</button>
+        </div>
+        <div id="filtWrap"></div>
+        <div class="empty-state" id="filtEmpty" style="display:none">
+          <div class="empty-icon">🔍</div><p>該当する履歴がありません</p>
+        </div>
+      </div>
+      <!-- 分析 -->
+      <div id="hist-analytics-pane" style="display:none">
+        <div id="analyticsWrap"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Bottom Nav（大きめに） -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="goPage('list',this)">
+      <span class="icon">🛒</span>リスト
+      <div class="nav-badge" id="listBadge" style="display:none">0</div>
+    </button>
+    <button class="nav-btn" onclick="goPage('inv',this)">
+      <span class="icon">📦</span>在庫
+    </button>
+    <button class="nav-btn" onclick="goPage('rec',this)">
+      <span class="icon">🔄</span>定期
+      <div class="nav-badge" id="recBadge" style="display:none">0</div>
+    </button>
+    <button class="nav-btn" onclick="goPage('meal',this)">
+      <span class="icon">🍽️</span>献立
+    </button>
+    <button class="nav-btn" onclick="goPage('hist',this)">
+      <span class="icon">📋</span>履歴
+    </button>
+  </nav>
+</div>
+
+<!-- Modals -->
+<div class="overlay" id="ov-zero">
+  <div class="modal">
+    <div class="modal-title">買い物リストに追加しますか？</div>
+    <div class="modal-body" id="ov-zero-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeOv('ov-zero')">キャンセル</button>
+      <button class="btn btn-ok" onclick="confirmZero()">追加する</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="ov-del">
+  <div class="modal">
+    <div class="modal-title">削除しますか？</div>
+    <div class="modal-body" id="ov-del-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeOv('ov-del')">キャンセル</button>
+      <button class="btn btn-del" onclick="confirmDel()">削除する</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="ov-complete">
+  <div class="modal">
+    <div class="modal-title">🛍️ 買い物完了</div>
+    <div class="modal-body" id="ov-complete-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeOv('ov-complete')">キャンセル</button>
+      <button class="btn btn-ok" onclick="confirmComplete()">完了にする</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="買い物メモ">
+<meta name="theme-color" content="#2d6a4f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<title>買い物メモ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="pullIndicator"></div>
+<div class="loading-bar" id="loadBar"></div>
+<div class="toast" id="toast"></div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="app-title">🛒 買い物メモ</div>
+    <div class="header-right">
+      <div class="ws-dot" id="wsDot"></div>
+      <button class="user-btn" onclick="reloadApp()" style="padding:5px 10px;font-size:18px;border-radius:50%;width:34px;height:34px;justify-content:center" title="更新">↺</button>
+      <button class="user-btn" onclick="toggleUser()">
+        <div class="u-dot" id="uDot" style="background:#7d3c98"></div>
+        <span id="uLabel">妻</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- 買い物リスト -->
+    <div class="page active" id="page-list">
+      <div id="notifBanner" style="display:none;background:var(--green-bg);border:1px solid var(--green);border-radius:var(--rs);padding:10px 14px;margin-bottom:10px;justify-content:space-between;align-items:center;font-size:13px;color:var(--green-dark)">
+        <span>通知を受け取りますか？</span>
+        <button onclick="requestNotifPermission()" style="background:var(--green);color:#fff;border:none;border-radius:var(--rs);padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font)">許可する</button>
+      </div>
+      <div class="add-toggle" onclick="toggleForm()">
+        <span>＋ 商品を追加</span><span id="formIcon">▾</span>
+      </div>
+      <div class="add-form" id="addForm">
+        <div class="field suggest-wrap">
+          <div class="field-label">商品名 *</div>
+          <input type="text" id="fName" placeholder="例：レノア 柔軟剤" oninput="onNameInput()" autocomplete="off">
+          <div class="sg-list" id="sgList"></div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <div class="field-label">ブランド・規格</div>
+            <input type="text" id="fBrand" placeholder="例：本体 540ml">
+          </div>
+          <div class="field">
+            <div class="field-label">カテゴリー</div>
+            <select id="fCat"><option value="">未分類</option></select>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <div class="field-label">購入スーパー</div>
+            <input type="text" id="fStore" placeholder="例：ベイシア">
+          </div>
+          <div class="field">
+            <div class="field-label">メモ</div>
+            <input type="text" id="fNote" placeholder="例：青いボトル">
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">購入頻度</div>
+          <div class="freq-row">
+            <button class="freq-btn active" data-freq="once"    onclick="selFreqBtn(this)">随時</button>
+            <button class="freq-btn"        data-freq="weekly"  onclick="selFreqBtn(this)">毎週</button>
+            <button class="freq-btn"        data-freq="monthly" onclick="selFreqBtn(this)">毎月</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addItem()">リストに追加</button>
+      </div>
+      <div id="listWrap"></div>
+      <div id="completeWrap" style="display:none;padding:0 0 6px">
+        <button class="btn-complete" onclick="openCompleteModal()">🛍️ 買い物完了（チェック済みを在庫へ）</button>
+      </div>
+    </div>
+
+    <!-- 在庫 -->
+    <div class="page" id="page-inv">
+      <div class="add-toggle" onclick="toggleInvForm()">
+        <span>＋ 在庫を直接追加</span><span id="invFormIcon">▾</span>
+      </div>
+      <div class="add-form" id="invAddForm">
+        <div class="field suggest-wrap">
+          <div class="field-label">商品名 *</div>
+          <input type="text" id="ifName" placeholder="例：醤油" oninput="onInvNameInput()" autocomplete="off">
+          <div class="sg-list" id="ifSgList"></div>
+        </div>
+        <div class="grid2">
+          <div class="field">
+            <div class="field-label">ブランド・規格</div>
+            <input type="text" id="ifBrand" placeholder="例：1L">
+          </div>
+          <div class="field">
+            <div class="field-label">カテゴリー</div>
+            <select id="ifCat"><option value="">未分類</option></select>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">購入スーパー</div>
+          <input type="text" id="ifStore" placeholder="例：ベイシア">
+        </div>
+        <button class="btn btn-primary" onclick="addInvDirect()">在庫に追加（満タン）</button>
+      </div>
+      <div id="invWrap"></div>
+      <div class="empty-state" id="invEmpty" style="display:none">
+        <div class="empty-icon">📦</div>
+        <p>在庫がありません<br>上の「在庫を直接追加」か<br>買い物完了後に自動追加されます</p>
+      </div>
+    </div>
+
+    <!-- 定期 -->
+    <div class="page" id="page-rec">
+      <div class="section-head">毎週</div><div id="recWeekly"></div>
+      <div class="section-head">毎月</div><div id="recMonthly"></div>
+      <div class="empty-state" id="recEmpty" style="display:none">
+        <div class="empty-icon">🔄</div>
+        <p>定期購入の登録がありません<br>商品追加時に「毎週」「毎月」を選んでください</p>
+      </div>
+    </div>
+
+    <!-- 献立 -->
+    <div class="page" id="page-meal">
+      <div class="ai-controls">
+        <div class="ctrl-label">👨‍👩‍👧‍👦 人数</div>
+        <div class="count-row">
+          <div class="count-box">
+            <div class="count-label">大人</div>
+            <div class="count-ctrl">
+              <button class="count-btn" onclick="changeCount('adults',-1)">−</button>
+              <span class="count-val" id="adults-val">2</span>
+              <button class="count-btn" onclick="changeCount('adults',1)">＋</button>
+            </div>
+          </div>
+          <div class="count-box">
+            <div class="count-label">子供</div>
+            <div class="count-ctrl">
+              <button class="count-btn" onclick="changeCount('kids',-1)">−</button>
+              <span class="count-val" id="kids-val">0</span>
+              <button class="count-btn" onclick="changeCount('kids',1)">＋</button>
+            </div>
+          </div>
+        </div>
+        <div class="ctrl-label">📅 何日分？</div>
+        <div class="day-row">
+          <button class="day-btn active" data-d="1" onclick="selDay(this)">1日</button>
+          <button class="day-btn" data-d="2" onclick="selDay(this)">2日</button>
+          <button class="day-btn" data-d="3" onclick="selDay(this)">3日</button>
+          <button class="day-btn" data-d="5" onclick="selDay(this)">5日</button>
+          <button class="day-btn" data-d="7" onclick="selDay(this)">7日</button>
+        </div>
+        <div class="ctrl-label">🍴 気分は？（複数OK）</div>
+        <div class="mood-row">
+          <button class="mood-btn" onclick="toggleMood(this)">時短</button>
+          <button class="mood-btn" onclick="toggleMood(this)">がっつり肉</button>
+          <button class="mood-btn" onclick="toggleMood(this)">野菜中心</button>
+          <button class="mood-btn" onclick="toggleMood(this)">ダイエット</button>
+          <button class="mood-btn" onclick="toggleMood(this)">筋トレ向き</button>
+          <button class="mood-btn" onclick="toggleMood(this)">和食</button>
+          <button class="mood-btn" onclick="toggleMood(this)">洋食</button>
+          <button class="mood-btn" onclick="toggleMood(this)">お子様向け</button>
+        </div>
+        <button class="btn-ai" id="btnAI" onclick="generateMeals()">✨ 献立を提案してもらう</button>
+      </div>
+      <div id="mealTokenInfo" style="display:none;font-size:11px;color:var(--text3);text-align:right;margin-bottom:8px"></div>
+      <div id="mealResults"></div>
+    </div>
+
+    <!-- 履歴 -->
+    <div class="page" id="page-hist">
+      <div class="hist-tabs">
+        <button class="hist-tab active" onclick="switchHistTab('list',this)">履歴</button>
+        <button class="hist-tab" onclick="switchHistTab('filter',this)">フィルター</button>
+        <button class="hist-tab" onclick="switchHistTab('analytics',this)">分析</button>
+      </div>
+      <div id="hist-list-pane">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn-x" style="font-size:13px;padding:6px 10px;color:var(--danger)" onclick="askDeleteAllHist()">🗑️ 全削除</button>
+        </div>
+        <div id="histWrap"></div>
+        <div class="empty-state" id="histEmpty" style="display:none"><div class="empty-icon">📋</div><p>購入履歴がありません</p></div>
+      </div>
+      <div id="hist-filter-pane" style="display:none">
+        <div class="add-form open" style="margin-bottom:10px">
+          <div class="field"><div class="field-label">商品名で絞り込み</div><input type="text" id="filt-name" placeholder="例：牛乳"></div>
+          <div class="grid2">
+            <div class="field"><div class="field-label">購入者</div><select id="filt-who"><option value="">全員</option><option value="妻">妻</option><option value="夫">夫</option></select></div>
+            <div class="field"><div class="field-label">スーパー</div><input type="text" id="filt-store" placeholder="例：ベイシア"></div>
+          </div>
+          <button class="btn btn-primary" onclick="applyFilter()">絞り込む</button>
+        </div>
+        <div id="filtWrap"></div>
+        <div class="empty-state" id="filtEmpty" style="display:none"><div class="empty-icon">🔍</div><p>該当する履歴がありません</p></div>
+      </div>
+      <div id="hist-analytics-pane" style="display:none"><div id="analyticsWrap"></div></div>
+    </div>
+
+    <!-- 設定 -->
+    <div class="page" id="page-settings">
+      <div class="setting-section">
+        <div class="setting-title">カテゴリー管理</div>
+        <div id="catList"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <input type="text" id="newCatName" placeholder="カテゴリー名" style="flex:1">
+          <input type="color" id="newCatColor" value="#888888" style="width:44px;height:44px;border:1px solid var(--border);border-radius:var(--rs);padding:2px;cursor:pointer;background:var(--surface2)">
+          <button class="btn btn-primary" style="width:auto;padding:10px 16px" onclick="addCategory()">追加</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="goPage('list',this)">
+      <span class="icon">🛒</span>リスト
+      <div class="nav-badge" id="listBadge" style="display:none">0</div>
+    </button>
+    <button class="nav-btn" onclick="goPage('inv',this)">
+      <span class="icon">📦</span>在庫
+    </button>
+    <button class="nav-btn" onclick="goPage('rec',this)">
+      <span class="icon">🔄</span>定期
+      <div class="nav-badge" id="recBadge" style="display:none">0</div>
+    </button>
+    <button class="nav-btn" onclick="goPage('meal',this)">
+      <span class="icon">🍽️</span>献立
+    </button>
+    <button class="nav-btn" onclick="goPage('hist',this)">
+      <span class="icon">📋</span>履歴
+    </button>
+    <button class="nav-btn" onclick="goPage('settings',this)">
+      <span class="icon">⚙️</span>設定
+    </button>
+  </nav>
+</div>
+
+<!-- Modals -->
+<div class="overlay" id="ov-zero">
+  <div class="modal">
+    <div class="modal-title">買い物リストに追加しますか？</div>
+    <div class="modal-body" id="ov-zero-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeOv('ov-zero')">キャンセル</button>
+      <button class="btn btn-ok" onclick="confirmZero()">追加する</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="ov-del">
+  <div class="modal">
+    <div class="modal-title">削除しますか？</div>
+    <div class="modal-body" id="ov-del-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeOv('ov-del')">キャンセル</button>
+      <button class="btn btn-del" onclick="confirmDel()">削除する</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="ov-complete">
+  <div class="modal">
+    <div class="modal-title">🛍️ 買い物完了</div>
+    <div class="modal-body" id="ov-complete-body"></div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="closeOv('ov-complete')">キャンセル</button>
+      <button class="btn btn-ok" onclick="confirmComplete()">完了にする</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
